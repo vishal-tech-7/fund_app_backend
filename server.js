@@ -6,7 +6,8 @@ const authRoutes = require('./routes/auth'); // Import authentication routes
 
 const app = express();
 app.use(express.json());
-app.use(cors()); // Enable CORS for cross-origin requests
+
+app.use(cors({ origin: 'https://fund-app-frontend-a4iv.onrender.com', credentials: true })); // Enable CORS for cross-origin requests
 
 // MongoDB connection string
 const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/fund_db';
