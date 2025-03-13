@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User'); 
+const User = require('../models/User');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
@@ -22,13 +22,19 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'User already exists. Please login.' });
     }
 
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     console.log("🔐 Hashed Password Before Saving:", hashedPassword);
 
+    // Save user
     const user = new User({ username, email: emailLowerCase, password: hashedPassword });
     await user.save();
+
+    // Verify password after saving
+    const savedUser = await User.findOne({ email: emailLowerCase });
+    console.log("✅ Stored Password in DB:", savedUser.password);
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
@@ -53,7 +59,7 @@ router.post('/login', async (req, res) => {
 
     if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
-    console.log("🔍 Stored Hashed Password:", user.password);
+    console.log("🔍 Stored Hashed Password in DB:", user.password);
     console.log("🔑 Entered Password:", password);
 
     const isMatch = await user.comparePassword(password);
