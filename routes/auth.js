@@ -1,10 +1,10 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User'); // Import User Model
+const User = require('../models/User'); 
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key"; // Ensure secret key is set
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 
 // ✅ Register and Return JWT Token
 router.post('/register', async (req, res) => {
@@ -15,22 +15,21 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    // Convert email to lowercase to prevent duplicates
     const emailLowerCase = email.toLowerCase();
-
-    // Check if the user already exists
     const userExists = await User.findOne({ email: emailLowerCase });
-    if (userExists) return res.status(400).json({ message: 'User already exists. Please login.' });
 
-    // Hash password
+    if (userExists) {
+      return res.status(400).json({ message: 'User already exists. Please login.' });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new user
+    console.log("🔐 Hashed Password Before Saving:", hashedPassword);
+
     const user = new User({ username, email: emailLowerCase, password: hashedPassword });
     await user.save();
 
-    // Generate JWT Token
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
     res.status(201).json({ message: 'User registered successfully', token });
@@ -49,16 +48,19 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    const emailLowerCase = email.toLowerCase(); // Standardize email format
+    const emailLowerCase = email.toLowerCase();
     const user = await User.findOne({ email: emailLowerCase });
 
     if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
+    console.log("🔍 Stored Hashed Password:", user.password);
+    console.log("🔑 Entered Password:", password);
+
+    const isMatch = await user.comparePassword(password);
+    console.log("✅ Password Match Result:", isMatch);
+
     if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
 
-    // Generate JWT Token
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
     res.json({ message: "Login successful", token });
@@ -68,7 +70,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ✅ Protected Route (Token Check without Middleware)
+// ✅ Protected Route
 router.get('/dashboard', async (req, res) => {
   const token = req.header('x-auth-token');
 
@@ -78,7 +80,7 @@ router.get('/dashboard', async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password'); // Exclude password
+    const user = await User.findById(decoded.id).select('-password');
 
     if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -89,7 +91,7 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
-// ✅ Logout Route (Frontend should delete token)
+// ✅ Logout Route
 router.post('/logout', async (req, res) => {
   res.json({ message: 'Logout successful. Remove token from localStorage on the client.' });
 });
