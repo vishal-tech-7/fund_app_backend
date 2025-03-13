@@ -15,7 +15,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    // Ensure email is lowercase and trimmed
+    // Convert email to lowercase & trim spaces
     const emailLowerCase = email.trim().toLowerCase();
 
     // Check if user already exists
@@ -27,13 +27,14 @@ router.post('/register', async (req, res) => {
     // ✅ Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    console.log("🔐 Hashed Password Before Saving:", hashedPassword);
+
+    console.log("🔐 Hashed Password Before Saving:", hashedPassword); 
 
     // ✅ Save user with hashed password
     const user = new User({ username, email: emailLowerCase, password: hashedPassword });
     await user.save();
 
-    // ✅ Verify password after saving (debugging)
+    // ✅ Verify stored password in DB (debugging)
     const savedUser = await User.findOne({ email: emailLowerCase });
     console.log("✅ Stored Password in DB:", savedUser.password);
 
@@ -56,7 +57,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    // Ensure email is lowercase and trimmed
+    // Convert email to lowercase & trim spaces
     const emailLowerCase = email.trim().toLowerCase();
 
     // Find user by email
@@ -64,7 +65,7 @@ router.post('/login', async (req, res) => {
     if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
     console.log("🔍 Stored Hashed Password in DB:", user.password);
-    console.log("🔑 Entered Password:", password);
+    console.log("🔑 Entered Password (Before Hashing):", password);
 
     // ✅ Compare entered password with stored hashed password
     const isMatch = await bcrypt.compare(password, user.password);
