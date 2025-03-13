@@ -6,7 +6,7 @@ const User = require('../models/User');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
 
-// ✅ Register and Return JWT Token
+// ✅ REGISTER (Sign Up)
 router.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
 
@@ -15,37 +15,39 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    const emailLowerCase = email.toLowerCase();
-    const userExists = await User.findOne({ email: emailLowerCase });
+    // Ensure email is lowercase and trimmed
+    const emailLowerCase = email.trim().toLowerCase();
 
+    // Check if user already exists
+    const userExists = await User.findOne({ email: emailLowerCase });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists. Please login.' });
     }
 
-    // Hash password
+    // ✅ Hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
     console.log("🔐 Hashed Password Before Saving:", hashedPassword);
 
-    // Save user
+    // ✅ Save user with hashed password
     const user = new User({ username, email: emailLowerCase, password: hashedPassword });
     await user.save();
 
-    // Verify password after saving
+    // ✅ Verify password after saving (debugging)
     const savedUser = await User.findOne({ email: emailLowerCase });
     console.log("✅ Stored Password in DB:", savedUser.password);
 
+    // Generate JWT Token
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
     res.status(201).json({ message: 'User registered successfully', token });
   } catch (error) {
-    console.error('Register Error:', error);
+    console.error('❌ Register Error:', error);
     res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 });
 
-// ✅ Login and Return JWT Token
+// ✅ LOGIN (Sign In)
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -54,29 +56,33 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    const emailLowerCase = email.toLowerCase();
-    const user = await User.findOne({ email: emailLowerCase });
+    // Ensure email is lowercase and trimmed
+    const emailLowerCase = email.trim().toLowerCase();
 
+    // Find user by email
+    const user = await User.findOne({ email: emailLowerCase });
     if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
     console.log("🔍 Stored Hashed Password in DB:", user.password);
     console.log("🔑 Entered Password:", password);
 
-    const isMatch = await user.comparePassword(password);
+    // ✅ Compare entered password with stored hashed password
+    const isMatch = await bcrypt.compare(password, user.password);
     console.log("✅ Password Match Result:", isMatch);
 
     if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
 
+    // Generate JWT Token
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
     res.json({ message: "Login successful", token });
   } catch (error) {
-    console.error('Login Error:', error);
+    console.error('❌ Login Error:', error);
     res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 });
 
-// ✅ Protected Route
+// ✅ PROTECTED ROUTE (Dashboard)
 router.get('/dashboard', async (req, res) => {
   const token = req.header('x-auth-token');
 
@@ -92,12 +98,12 @@ router.get('/dashboard', async (req, res) => {
 
     res.json({ message: 'Welcome to the Dashboard!', user });
   } catch (error) {
-    console.error('Dashboard Access Error:', error);
+    console.error('❌ Dashboard Access Error:', error);
     res.status(400).json({ message: 'Invalid token' });
   }
 });
 
-// ✅ Logout Route
+// ✅ LOGOUT (Handled by frontend removing the token)
 router.post('/logout', async (req, res) => {
   res.json({ message: 'Logout successful. Remove token from localStorage on the client.' });
 });
