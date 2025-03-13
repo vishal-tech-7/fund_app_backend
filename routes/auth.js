@@ -22,16 +22,17 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'User already exists. Please login.' });
     }
 
-    // ✅ Ensure password is hashed only ONCE
+    // ✅ Hash the password before saving
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     console.log("🔐 Hashed Password Before Saving:", hashedPassword);
 
+    // ✅ Save user with hashed password
     const user = new User({ username, email: emailLowerCase, password: hashedPassword });
     await user.save();
 
-    // ✅ Fetch saved user & verify password is stored correctly
+    // ✅ Verify stored password (debugging)
     const savedUser = await User.findOne({ email: emailLowerCase });
     console.log("✅ Stored Hashed Password in DB:", savedUser.password);
 
@@ -59,13 +60,16 @@ router.post('/login', async (req, res) => {
     if (!user) return res.status(400).json({ message: 'Invalid email or password' });
 
     console.log("🔍 Stored Hashed Password in DB:", user.password);
-    console.log("🔑 Entered Password (Before Hashing):", password);
+    console.log("🔑 Entered Password:", password);
 
-    // ✅ Fix: Ensure bcrypt.compare() is working correctly
+    // ✅ Compare entered password with stored hashed password
     const isMatch = await bcrypt.compare(password, user.password);
     console.log("✅ Password Match Result:", isMatch);
 
-    if (!isMatch) return res.status(400).json({ message: 'Invalid email or password' });
+    if (!isMatch) {
+      console.error("❌ ERROR: Password mismatch in login!");
+      return res.status(400).json({ message: 'Invalid email or password' });
+    }
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
@@ -74,11 +78,6 @@ router.post('/login', async (req, res) => {
     console.error('❌ Login Error:', error);
     res.status(500).json({ message: 'Server error. Please try again later.' });
   }
-});
-
-// ✅ LOGOUT (Handled by frontend removing the token)
-router.post('/logout', async (req, res) => {
-  res.json({ message: 'Logout successful. Remove token from localStorage on the client.' });
 });
 
 module.exports = router;
