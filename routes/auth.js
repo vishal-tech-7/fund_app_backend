@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const authenticateToken = require('../middleware/authMiddleware');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret_key";
@@ -79,5 +80,17 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 });
+router.get('/dashboard', authenticateToken, async (req, res) => {
+    try {
+      const user = await User.findById(req.user.id).select('-password');
+  
+      if (!user) return res.status(404).json({ message: 'User not found' });
+  
+      res.json({ message: 'Welcome to the Dashboard!', user });
+    } catch (error) {
+      console.error('❌ Dashboard Access Error:', error);
+      res.status(400).json({ message: 'Invalid token' });
+    }
+  });
 
 module.exports = router;
