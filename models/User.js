@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     password: {
-      type: String, // Will be hashed in `auth.js`
+      type: String, 
       required: true,
     },
   },
